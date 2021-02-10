@@ -92,17 +92,16 @@ public class ServerCommand implements SimpleCommand {
     ServerInfo serverInfo = server.getServerInfo();
     TextComponent serverTextComponent = Component.text(serverInfo.getName());
 
-    String playersText = server.getPlayersConnected().size() + " player(s) online";
     if (serverInfo.getName().equals(currentPlayerServer)) {
       serverTextComponent = serverTextComponent.color(NamedTextColor.GREEN)
           .hoverEvent(
-              showText(Component.text("Currently connected to this server\n" + playersText))
+              showText(Component.text("Currently connected to this server"))
           );
     } else {
       serverTextComponent = serverTextComponent.color(NamedTextColor.GRAY)
           .clickEvent(ClickEvent.runCommand("/server " + serverInfo.getName()))
           .hoverEvent(
-              showText(Component.text("Click to connect to this server\n" + playersText))
+              showText(Component.text("Click to connect to this server"))
           );
     }
     return serverTextComponent;
