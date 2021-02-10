@@ -46,7 +46,7 @@ public class ServerCommand implements SimpleCommand {
       // Trying to connect to a server.
       String serverName = args[0];
       Optional<RegisteredServer> toConnect = server.getServer(serverName);
-      if (!toConnect.isPresent()) {
+      if (!toConnect.isPresent() || !canAccess(player, toConnect.get())) {
         player.sendMessage(Identity.nil(),
             Component.text("Server " + serverName + " doesn't exist.", NamedTextColor.RED));
         return;
@@ -76,6 +76,9 @@ public class ServerCommand implements SimpleCommand {
         .color(NamedTextColor.YELLOW);
     for (int i = 0; i < servers.size(); i++) {
       RegisteredServer rs = servers.get(i);
+      if (!canAccess(executor, rs)) {
+        continue;
+      }
       serverListBuilder.append(formatServerComponent(currentServer, rs));
       if (i != servers.size() - 1) {
         serverListBuilder.append(Component.text(", ", NamedTextColor.GRAY));
@@ -109,6 +112,7 @@ public class ServerCommand implements SimpleCommand {
   public List<String> suggest(final SimpleCommand.Invocation invocation) {
     final String[] currentArgs = invocation.arguments();
     Stream<String> possibilities = server.getAllServers().stream()
+            .filter(rs -> canAccess(invocation.source(), rs))
             .map(rs -> rs.getServerInfo().getName());
 
     if (currentArgs.length == 0) {
@@ -125,5 +129,9 @@ public class ServerCommand implements SimpleCommand {
   @Override
   public boolean hasPermission(final SimpleCommand.Invocation invocation) {
     return invocation.source().getPermissionValue("velocity.command.server") != Tristate.FALSE;
+  }
+
+  private boolean canAccess(CommandSource source, RegisteredServer server) {
+    return source.hasPermission("velocity.server." + server.getServerInfo().getName());
   }
 }
