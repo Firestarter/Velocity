@@ -5,8 +5,13 @@ plugins {
     id 'checkstyle'
 }
 
+apply plugin: 'org.cadixdev.licenser'
 apply from: '../gradle/checkstyle.gradle'
 apply plugin: 'com.github.johnrengelman.shadow'
+
+license {
+    header = project.rootProject.file('HEADER.txt')
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -28,6 +33,7 @@ jar {
         attributes 'Implementation-Version': version
         attributes 'Implementation-Vendor': "Velocity Contributors"
         attributes 'Multi-Release': 'true'
+        attributes 'Add-Opens': 'java.base/java.lang'
     }
 }
 
@@ -76,6 +82,8 @@ dependencies {
 
     implementation 'com.electronwill.night-config:toml:3.6.3'
 
+    implementation 'org.bstats:bstats-base:2.2.0'
+
     compileOnly 'com.github.spotbugs:spotbugs-annotations:4.1.2'
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
@@ -116,7 +124,6 @@ shadowJar {
     exclude 'it/unimi/dsi/fastutil/objects/*Object2Float*'
     exclude 'it/unimi/dsi/fastutil/objects/*Object2IntArray*'
     exclude 'it/unimi/dsi/fastutil/objects/*Object2IntAVL*'
-    exclude 'it/unimi/dsi/fastutil/objects/*Object*OpenCustom*'
     exclude 'it/unimi/dsi/fastutil/objects/*Object2IntRB*'
     exclude 'it/unimi/dsi/fastutil/objects/*Object2Long*'
     exclude 'it/unimi/dsi/fastutil/objects/*Object2Object*'
@@ -126,6 +133,8 @@ shadowJar {
     exclude 'it/unimi/dsi/fastutil/objects/*Reference*'
     exclude 'it/unimi/dsi/fastutil/shorts/**'
     exclude 'org/checkerframework/checker/**'
+
+    relocate 'org.bstats', 'com.velocitypowered.proxy.bstats'
 }
 
 artifacts {

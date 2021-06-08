@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2018 Velocity Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package com.velocitypowered.proxy.connection;
 
 import static com.velocitypowered.proxy.network.Connections.CIPHER_DECODER;
@@ -19,12 +36,13 @@ import com.velocitypowered.proxy.VelocityServer;
 import com.velocitypowered.proxy.connection.client.HandshakeSessionHandler;
 import com.velocitypowered.proxy.connection.client.LoginSessionHandler;
 import com.velocitypowered.proxy.connection.client.StatusSessionHandler;
+import com.velocitypowered.proxy.network.Connections;
 import com.velocitypowered.proxy.protocol.MinecraftPacket;
 import com.velocitypowered.proxy.protocol.StateRegistry;
 import com.velocitypowered.proxy.protocol.netty.MinecraftCipherDecoder;
 import com.velocitypowered.proxy.protocol.netty.MinecraftCipherEncoder;
 import com.velocitypowered.proxy.protocol.netty.MinecraftCompressDecoder;
-import com.velocitypowered.proxy.protocol.netty.MinecraftCompressEncoder;
+import com.velocitypowered.proxy.protocol.netty.MinecraftCompressorAndLengthEncoder;
 import com.velocitypowered.proxy.protocol.netty.MinecraftDecoder;
 import com.velocitypowered.proxy.protocol.netty.MinecraftEncoder;
 import com.velocitypowered.proxy.util.except.QuietDecoderException;
@@ -385,8 +403,8 @@ public class MinecraftConnection extends ChannelInboundHandlerAdapter {
     } else {
       MinecraftCompressDecoder decoder = (MinecraftCompressDecoder) channel.pipeline()
           .get(COMPRESSION_DECODER);
-      MinecraftCompressEncoder encoder = (MinecraftCompressEncoder) channel.pipeline()
-          .get(COMPRESSION_ENCODER);
+      MinecraftCompressorAndLengthEncoder encoder =
+          (MinecraftCompressorAndLengthEncoder) channel.pipeline().get(COMPRESSION_ENCODER);
       if (decoder != null && encoder != null) {
         decoder.setThreshold(threshold);
         encoder.setThreshold(threshold);
@@ -394,9 +412,10 @@ public class MinecraftConnection extends ChannelInboundHandlerAdapter {
         int level = server.getConfiguration().getCompressionLevel();
         VelocityCompressor compressor = Natives.compress.get().create(level);
 
-        encoder = new MinecraftCompressEncoder(threshold, compressor);
+        encoder = new MinecraftCompressorAndLengthEncoder(threshold, compressor);
         decoder = new MinecraftCompressDecoder(threshold, compressor);
 
+        channel.pipeline().remove(FRAME_ENCODER);
         channel.pipeline().addBefore(MINECRAFT_DECODER, COMPRESSION_DECODER, decoder);
         channel.pipeline().addBefore(MINECRAFT_ENCODER, COMPRESSION_ENCODER, encoder);
       }
