@@ -94,6 +94,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import net.kyori.adventure.audience.MessageType;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.identity.Identity;
+import net.kyori.adventure.permission.PermissionChecker;
+import net.kyori.adventure.pointer.Pointers;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -105,6 +107,7 @@ import org.apache.logging.log4j.Logger;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 public class ConnectedPlayer implements MinecraftConnectionAssociation, Player {
 
@@ -142,6 +145,11 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player {
   private final Queue<ResourcePackInfo> outstandingResourcePacks = new ArrayDeque<>();
   private @Nullable ResourcePackInfo pendingResourcePack;
   private @Nullable ResourcePackInfo appliedResourcePack;
+  private final @NotNull Pointers pointers = Player.super.pointers().toBuilder()
+          .withDynamic(Identity.UUID, this::getUniqueId)
+          .withDynamic(Identity.NAME, this::getUsername)
+          .withStatic(PermissionChecker.POINTER, getPermissionChecker())
+          .build();
 
   ConnectedPlayer(VelocityServer server, GameProfile profile, MinecraftConnection connection,
       @Nullable InetSocketAddress virtualHost, boolean onlineMode) {
@@ -924,7 +932,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player {
                   .compareTo(ProtocolVersion.MINECRAFT_1_17) >= 0) {
             break;
           }
-          onResourcePackResponse(PlayerResourcePackStatusEvent.Status.DECLINED, new byte[0]);
+          onResourcePackResponse(PlayerResourcePackStatusEvent.Status.DECLINED);
           queued = null;
         }
         if (queued == null) {
@@ -960,9 +968,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player {
   /**
    * Processes a client response to a sent resource-pack.
    */
-  public boolean onResourcePackResponse(PlayerResourcePackStatusEvent.Status status,
-                                        @Nullable byte[] hash) {
-
+  public boolean onResourcePackResponse(PlayerResourcePackStatusEvent.Status status) {
     final boolean peek = status == PlayerResourcePackStatusEvent.Status.ACCEPTED;
     final ResourcePackInfo queued = peek
             ? outstandingResourcePacks.peek() : outstandingResourcePacks.poll();
@@ -978,7 +984,6 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player {
                         .translatable("multiplayer.requiredTexturePrompt.disconnect"));
               }
             });
-
 
     switch (status) {
       case ACCEPTED:
@@ -1000,9 +1005,7 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player {
     }
 
     if (!peek) {
-      connection.eventLoop().execute(() -> {
-        tickResourcePackQueue();
-      });
+      connection.eventLoop().execute(this::tickResourcePackQueue);
     }
 
     return queued != null && queued.getOrigin() == ResourcePackInfo.Origin.DOWNSTREAM_SERVER;
@@ -1072,6 +1075,11 @@ public class ConnectedPlayer implements MinecraftConnectionAssociation, Player {
     // Otherwise, we need to see if the player already knows this channel or it's known by the
     // proxy.
     return minecraftOrFmlMessage || knownChannels.contains(message.getChannel());
+  }
+
+  @Override
+  public @NotNull Pointers pointers() {
+    return pointers;
   }
 
   private class IdentityImpl implements Identity {
